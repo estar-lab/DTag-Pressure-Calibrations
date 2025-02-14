@@ -83,7 +83,7 @@ for i = 1:n
     rec_names{i}(end-8) = ' ';
 end
 % Loop through the signals and align them with the reference signal
-T = tiledlayout(2,1, "Padding","compact", "TileSpacing","compact");
+
 for i = 1:n
     % Compute the cross-correlation between the reference signal and the current signal
     [correlation, lag] = xcorr(ref_signal, signals{i});
@@ -95,27 +95,93 @@ for i = 1:n
     % Align the current signal by shifting it according to the lag
     aligned_signals{i} = circshift(signals{i}, lag_value);
     
+    % Find movmean
+    median_signals{i} = movmedian(aligned_signals{i}, 1e3);
+    
     % Plot the aligned signals for visualization
+    
+    
+end
+
+
+
+depths = 1e2*(9:-1:0);
+
+
+for i = 1:n
+    cont = 0;
+    while ~cont
+        plot(signals{i})
+        title(rec_names{i})
+        [idxs,~] = getpts(gcf);
+        raw_vals = signals{i}(round(idxs));
+        if ~isequal(length(raw_vals), length(depths))
+            fprintf('Number of points is not the same as the number of depths\n')
+            close gcf
+        else
+            cont = 1;
+        end
+    end
+    params = polyfit(raw_vals, depths, 1);
+    corr_signals{i} = params(1)*aligned_signals{i}+params(2);
+    Params{i} = params;
+end
+T = tiledlayout(3,1, "Padding","compact", "TileSpacing","compact");
+for i = 1:n    
+% Plot everything
     ax1 = nexttile(1);
     hold on
-    plot(signals{i}); 
-    hold off
-    if i == n
-        legend(rec_names)
-        ylabel('P (V)')
-        title(ax1, 'Unaligned Signals')
+    if all(rec_names{i} == '339PressCal 12022025') || all(rec_names{i} == '348PressCal 12022025')
+        plot(signals{i}, LineStyle="--", LineWidth=1); 
+    else
+        plot(signals{i});
     end
+    hold off
+    
+   
+    
+
+
     ax2 = nexttile(2);
+    
     hold on
-    plot(aligned_signals{i}); ylabel('P (V)')
-    hold off
-    if i == n
-        legend(rec_names)
-        ylabel('P (V)')
-        title(ax2, 'Aligned Signals')
+    if all(rec_names{i} == '339PressCal 12022025') || all(rec_names{i} == '348PressCal 12022025')
+        plot(aligned_signals{i}, LineStyle="--", LineWidth=1)
+    else
+        plot(aligned_signals{i})
     end
+    hold off
+
+    
+
+    ax3 = nexttile(3);
+    hold on
+    if all(rec_names{i} == '339PressCal 12022025') || all(rec_names{i} == '348PressCal 12022025')
+        plot(corr_signals{i}, LineStyle="--", LineWidth=1)
+    else
+       plot(corr_signals{i});
+    end
+    hold off
+    
+    
+    
+
 end
-linkaxes([ax1, ax2], 'xy')
+linkaxes([ax1, ax2, ax3], 'x')
+linkaxes([ax1, ax2], 'y')
+
+legend(ax2, rec_names)
+ylabel(ax2, 'P (V)')
+title(ax2, 'Aligned Signals')
+
+legend(ax1, rec_names)
+ylabel(ax1, 'P (V)')
+title(ax1, 'Unaligned Signals')
+
+legend(ax3, rec_names)
+ylabel(ax3, 'Depth (m)')
+title(ax3, 'Corrected Depths')
+
 % Optional
 % saveas(gcf, ['Plots\PressCal_' rec_names{1}(end-7:end) '.png'])
 
